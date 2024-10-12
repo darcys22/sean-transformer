@@ -90,5 +90,4 @@ class Transformer(nn.Module):
             x = transformer_block(x)
         x = self.ln(x)
         x = self.ll(x)
-        x = F.softmax(x, dim=-1)
         return x
