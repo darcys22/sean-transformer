@@ -64,16 +64,38 @@ class MultiHeadAttention(nn.Module):
         out = self.feed_forward(out)
         return out
 
+class TransformerBlock(nn.Module):
+    def __init__(self, args: ModelArgs):
+        super().__init__()
+        self.attention = MultiHeadAttention(args)
+        self.ln1 = nn.LayerNorm(args.emb_size)
+        self.ffn = MLP(args.emb_size)
+        self.ln2 = nn.LayerNorm(args.emb_size)
+
+    def forward(self, x):
+        # Multi-Head Attention with residual connection and LayerNorm
+        attn_output = self.attention(x)
+        x = x + attn_output
+        x = self.ln1(x)
+
+        # Feed-Forward Network with residual connection and LayerNorm
+        ffn_output = self.ffn(x)
+        x = x + ffn_output
+        x = self.ln2(x)
+
+        return x
+
+
 class Transformer(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
         self.embedding = nn.Embedding(args.vocab_size, args.emb_size)
         self.positional_encoding = nn.Embedding(args.seq_length, args.emb_size)
-        self.layers = nn.ModuleList([MultiHeadAttention(args) for i in range(args.n_layers)])
+        self.layers = nn.ModuleList([TransformerBlock(args) for i in range(args.n_layers)])
+
         self.n_layers = args.n_layers
         self.seq_length = args.seq_length
         self.drop = nn.Dropout(p=0.2)
-        self.ln = nn.LayerNorm(args.emb_size)
         self.ll = nn.Linear(args.emb_size, args.vocab_size)
 
         self.embedding.weight = self.ll.weight
@@ -88,6 +110,5 @@ class Transformer(nn.Module):
         x = self.drop(tok_emb + pos_emb)
         for transformer_block in self.layers:
             x = transformer_block(x)
-        x = self.ln(x)
         x = self.ll(x)
         return x
