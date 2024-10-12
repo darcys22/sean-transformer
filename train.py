@@ -85,6 +85,12 @@ optim = torch.optim.Adam(seanTransformer.parameters(), lr = 6e-4)
 num_epochs = 50
 train_losses = {}
 
+log_dir = "data"
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, f"log.txt")
+with open(log_file, "w") as f: # open for writing to clear the file
+    pass
+
 for epoch in range(num_epochs):
     epoch_losses = list()
     for i, (X, Y) in enumerate(loaders['train']):
@@ -101,5 +107,16 @@ for epoch in range(num_epochs):
         epoch_losses.append(loss.detach().item() / X.shape[1])
         if (i+1) % 250 == 0:
             print('Loss: {:.4f}'.format(loss.detach().item()))
+            with open(log_file, "a") as f:
+                f.write(f"{epoch} {i} val {loss.detach().item():.4f}\n")
     train_losses[epoch] = torch.tensor(epoch_losses).mean()
     print(f'=> epoch: {epoch + 1}, loss: {train_losses[epoch]}')
+    checkpoint_path = os.path.join(log_dir, f"model_{epoch:05d}.pt")
+    checkpoint = {
+        'model': seanTransformer.state_dict(),
+        'model_args': model_args,
+        'epoch': epoch,
+        'val_loss': train_losses[epoch]
+    }
+    torch.save(checkpoint, checkpoint_path)
+
