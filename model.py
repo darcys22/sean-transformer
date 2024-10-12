@@ -20,10 +20,13 @@ class MLP(nn.Module):
         super().__init__()
         self.i2h = nn.Linear(emb_length, emb_length * 4)
         self.h2o = nn.Linear(emb_length * 4, emb_length)
+        self.dropout = nn.Dropout(0.1)
 
     def forward(self, x):
         x = F.relu(self.i2h(x))
+        x = self.dropout(x)
         x = self.h2o(x)
+        x = self.dropout(x)
         return x
 
 class MultiHeadAttention(nn.Module):
