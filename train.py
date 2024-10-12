@@ -80,7 +80,7 @@ seanTransformer = model.Transformer(model_args)
 seanTransformer.to(device)
 
 criterion = nn.CrossEntropyLoss()
-optim = torch.optim.Adam(seanTransformer.parameters(), lr = 6e-4)
+optim = torch.optim.Adam(seanTransformer.parameters(), lr = 5e-5)
 
 num_epochs = 50
 train_losses = {}
