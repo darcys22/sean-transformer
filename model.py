@@ -8,10 +8,10 @@ torch.set_printoptions(sci_mode=False)
 
 @dataclass
 class ModelArgs:
-    emb_size: int = 512
-    n_layers: int = 16
-    n_heads: int = 16
-    seq_length: int = 512
+    emb_size: int = 1024
+    n_layers: int = 8
+    n_heads: int = 8
+    seq_length: int = 128
     BS: int = 32
     vocab_size: int = 64
 
@@ -41,7 +41,7 @@ class ScaledDotProductAttention(nn.Module):
         xq = self.query(x)
         xk = self.key(x)
         xv = self.value(x)
-        att = (xq @ xk.transpose(-2,-1)) * (1.0 / math.sqrt(self.n_heads))
+        att = (xq @ xk.transpose(-2,-1)) * (1.0 / math.sqrt(self.head_size))
         # TODO sean mask here
         x = F.softmax(att, dim=-1)
         x = x @ xv
