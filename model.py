@@ -26,44 +26,43 @@ class MLP(nn.Module):
         x = self.h2o(x)
         return x
 
-class ScaledDotProductAttention(nn.Module):
-    def __init__(self, emb_length, n_heads):
-        super().__init__()
-        self.head_size = emb_length // n_heads
-        self.key = nn.Linear(self.head_size, self.head_size)
-        self.query = nn.Linear(self.head_size, self.head_size)
-        self.value = nn.Linear(self.head_size, self.head_size)
-        self.n_heads = n_heads
-        self.ln1 = nn.LayerNorm(self.head_size)
-        self.ln2 = nn.LayerNorm(self.head_size)
-
-    def forward(self, x):
-        xq = self.query(x)
-        xk = self.key(x)
-        xv = self.value(x)
-        att = (xq @ xk.transpose(-2,-1)) * (1.0 / math.sqrt(self.head_size))
-        # TODO sean mask here
-        x = F.softmax(att, dim=-1)
-        x = x @ xv
-        return x
-
 class MultiHeadAttention(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
         self.n_heads = args.n_heads
         self.emb_size = args.emb_size
-        self.heads = nn.ModuleList([ScaledDotProductAttention(args.emb_size, args.n_heads) for i in range(args.n_heads)])
-        self.feed_forward = MLP(args.emb_size)
+        self.head_dim = self.emb_size // self.n_heads
+
+        assert self.emb_size % self.n_heads == 0, "Embedding size must be divisible by number of heads"
+
+        self.qkv = nn.Linear(self.emb_size, self.emb_size * 3)
+        self.fc_out = nn.Linear(self.emb_size, self.emb_size)
+        self.feed_forward = MLP(self.emb_size)
 
     def forward(self, x):
-        x = torch.split(x, self.emb_size // self.n_heads, 2)
-        attention_heads = []
-        for i in range(self.n_heads):
-            head_x = self.heads[i](x[i])
-            attention_heads.append(head_x)
-        x = torch.cat(attention_heads, 2)
-        x = self.feed_forward(x)
-        return x
+        batch_size, seq_length, _ = x.size()
+
+        # Compute queries, keys, and values in one go
+        qkv = self.qkv(x)  # [batch_size, seq_length, emb_size * 3]
+        qkv = qkv.reshape(batch_size, seq_length, 3, self.n_heads, self.head_dim)
+        qkv = qkv.permute(2, 0, 3, 1, 4)  # [3, batch_size, n_heads, seq_length, head_dim]
+
+        q, k, v = qkv[0], qkv[1], qkv[2]  # Each is [batch_size, n_heads, seq_length, head_dim]
+
+        # Compute scaled dot-product attention
+        attn_weights = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+        seq_len = attn_weights.size(-1)
+        mask = torch.tril(torch.ones(seq_len, seq_len)).to(x.device)
+        mask = mask.unsqueeze(0).unsqueeze(1)  # [1, 1, seq_len, seq_len]
+        attn_weights = attn_weights.masked_fill(mask == 0, float('-inf'))
+        attn_probs = F.softmax(attn_weights, dim=-1)
+
+        out = attn_probs @ v  # [batch_size, n_heads, seq_length, head_dim]
+        out = out.transpose(1, 2).contiguous().reshape(batch_size, seq_length, self.emb_size)
+
+        out = self.fc_out(out)
+        out = self.feed_forward(out)
+        return out
 
 class Transformer(nn.Module):
     def __init__(self, args: ModelArgs):
@@ -76,6 +75,7 @@ class Transformer(nn.Module):
         self.drop = nn.Dropout(p=0.2)
         self.ln = nn.LayerNorm(args.emb_size)
         self.ll = nn.Linear(args.emb_size, args.vocab_size)
+
         self.embedding.weight = self.ll.weight
 
 
