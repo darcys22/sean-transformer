@@ -1,6 +1,7 @@
 import math
 import random
 import os
+import wandb
 
 import numpy as np
 np.set_printoptions(suppress=True)
@@ -85,6 +86,14 @@ optim = torch.optim.Adam(seanTransformer.parameters(), lr = 5e-5)
 num_epochs = 50
 train_losses = {}
 
+wandb.init(
+    # set the wandb project where this run will be logged
+    project="sean-transformer",
+
+    # track hyperparameters and run metadata
+    config=model_args
+)
+
 log_dir = "data"
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, f"log.txt")
@@ -109,6 +118,7 @@ for epoch in range(num_epochs):
             print('Loss: {:.4f}'.format(loss.detach().item()))
             with open(log_file, "a") as f:
                 f.write(f"{epoch} {i} val {loss.detach().item():.4f}\n")
+            wandb.log({"loss": loss.detach().item()})
     train_losses[epoch] = torch.tensor(epoch_losses).mean()
     print(f'=> epoch: {epoch + 1}, loss: {train_losses[epoch]}')
     checkpoint_path = os.path.join(log_dir, f"model_{epoch:05d}.pt")
@@ -119,4 +129,4 @@ for epoch in range(num_epochs):
         'val_loss': train_losses[epoch]
     }
     torch.save(checkpoint, checkpoint_path)
-
+wandb.finish()
