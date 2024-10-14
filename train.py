@@ -18,6 +18,7 @@ import requests
 from tqdm import tqdm, trange
 
 import model
+from tiny_shakespeare import load_data
 
 # attempt to autodetect device
 device = "cpu"
@@ -29,52 +30,7 @@ print(f"using device: {device}")
 
 # Get default arguments
 model_args: model.ModelArgs = model.ModelArgs()
-
-# Custom dataset class for Tiny Shakespeare
-class TinyShakespeareDataset(Dataset):
-    def __init__(self, text, seq_length):
-        self.text = text
-        self.seq_length = seq_length
-        self.chars = sorted(list(set(text)))
-        self.char_to_idx = {ch: i for i, ch in enumerate(self.chars)}
-        self.idx_to_char = {i: ch for i, ch in enumerate(self.chars)}
-        self.data_size = len(self.text)
-
-    def __len__(self):
-        return max(0, self.data_size - self.seq_length)
-
-    def __getitem__(self, index):
-        x = [self.char_to_idx[c] for c in self.text[index:index+self.seq_length]]
-        y = [self.char_to_idx[c] for c in self.text[index+1:index+self.seq_length+1]]
-        return torch.tensor(x), torch.tensor(y)
-
-# Download Tiny Shakespeare dataset
-def download_tiny_shakespeare():
-    url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
-    if not os.path.exists("data/tinyshakespeare.txt"):
-        data = requests.get(url).text
-        with open("data/tinyshakespeare.txt", "w") as f:
-            f.write(data)
-
-# Download the dataset
-download_tiny_shakespeare()
-
-# Read the dataset
-with open("data/tinyshakespeare.txt", "r") as f:
-    text = f.read()
-
-# Create dataset and split into train and test
-dataset = TinyShakespeareDataset(text, model_args.seq_length)
-model_args.vocab_size = len(dataset.chars)
-train_size = int(0.8 * len(dataset))
-test_size = len(dataset) - train_size
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-# Create data loaders
-loaders = {
-    'train': DataLoader(train_dataset, batch_size=model_args.BS, shuffle=True),
-    'test': DataLoader(test_dataset, batch_size=model_args.BS, shuffle=True),
-}
+data = load_data(model_args)
 
 # Get model
 seanTransformer = model.Transformer(model_args)
@@ -102,7 +58,7 @@ with open(log_file, "w") as f: # open for writing to clear the file
 
 for epoch in range(num_epochs):
     epoch_losses = list()
-    for i, (X, Y) in enumerate(loaders['train']):
+    for i, (X, Y) in enumerate(data.loaders['train']):
         if X.shape[0] != model_args.BS:
             continue
         optim.zero_grad()
