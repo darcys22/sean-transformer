@@ -18,7 +18,7 @@ import requests
 from tqdm import tqdm, trange
 
 import model
-from tiny_shakespeare import load_data
+from fineweb import load_data
 
 # attempt to autodetect device
 device = "cpu"
@@ -39,7 +39,7 @@ seanTransformer.to(device)
 criterion = nn.CrossEntropyLoss()
 optim = torch.optim.Adam(seanTransformer.parameters(), lr = 5e-5)
 
-num_epochs = 50
+num_epochs = 2
 train_losses = {}
 
 wandb.init(
@@ -70,7 +70,7 @@ for epoch in range(num_epochs):
         optim.step()
 
         epoch_losses.append(loss.detach().item() / X.shape[1])
-        if (i+1) % 250 == 0:
+        if (i+1) % 50 == 0:
             print('Loss: {:.4f}'.format(loss.detach().item()))
             with open(log_file, "a") as f:
                 f.write(f"{epoch} {i} val {loss.detach().item():.4f}\n")

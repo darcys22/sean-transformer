@@ -8,11 +8,11 @@ torch.set_printoptions(sci_mode=False)
 
 @dataclass
 class ModelArgs:
-    emb_size: int = 1024
-    n_layers: int = 8
-    n_heads: int = 8
-    seq_length: int = 128
-    BS: int = 32
+    emb_size: int = 768
+    n_layers: int = 12
+    n_heads: int = 12
+    seq_length: int = 1024
+    BS: int = 8
     vocab_size: int = 64
 
 class MLP(nn.Module):

@@ -104,6 +104,9 @@ class FineWebLoaderWrapper:
         # Load the dataset and shards
         self.load_fineweb_dataset()
 
+        self.model_args.vocab_size = enc.n_vocab  # Set vocab size based on tokenizer
+
+
         # Initialize DataLoaderLite for train and val splits
         B, T = self.model_args.BS, self.model_args.seq_length
         self.loaders = {
@@ -118,6 +121,9 @@ class FineWebLoaderWrapper:
         train_shards = [f for f in os.listdir(self.DATA_CACHE_DIR) if 'train' in f and f.endswith('.npy')]
         val_shards = [f for f in os.listdir(self.DATA_CACHE_DIR) if 'val' in f and f.endswith('.npy')]
 
+        # Initialize tokenizer
+        init_worker()  # Initialize enc and eot
+
         if train_shards and val_shards:
             print("Checking shard integrity...")
             if all(check_shard_integrity(os.path.join(self.DATA_CACHE_DIR, f)) for f in train_shards + val_shards):
@@ -129,8 +135,6 @@ class FineWebLoaderWrapper:
         # Download the dataset from Hugging Face and cache it locally
         fw = load_dataset("HuggingFaceFW/fineweb-edu", name=self.remote_name, split="train", cache_dir=self.DATA_CACHE_DIR)
 
-        # Initialize tokenizer
-        init_worker()  # Initialize enc and eot
 
         # Tokenize documents and create shards
         nprocs = max(1, os.cpu_count() // 2)
