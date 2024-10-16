@@ -12,8 +12,10 @@ class ModelArgs:
     n_layers: int = 12
     n_heads: int = 12
     seq_length: int = 1024
-    BS: int = 8
     vocab_size: int = 64
+    batch_size: int = 8
+    gradient_accumulation: int = 64
+    learning_rate: float = 6e-4
 
 class MLP(nn.Module):
     def __init__(self, emb_length):

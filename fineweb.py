@@ -108,7 +108,7 @@ class FineWebLoaderWrapper:
 
 
         # Initialize DataLoaderLite for train and val splits
-        B, T = self.model_args.BS, self.model_args.seq_length
+        B, T = self.model_args.batch_size, self.model_args.seq_length
         self.loaders = {
             'train': DataLoaderLite(B=B, T=T, process_rank=self.process_rank,
                                     num_processes=self.num_processes, split="train", data_root=self.DATA_CACHE_DIR),
@@ -187,7 +187,7 @@ if __name__ == '__main__':
         n_layers: int = 8
         n_heads: int = 8
         seq_length: int = 128
-        BS: int = 32
+        batch_size: int = 32
         vocab_size: int = 64
 
     model_args = ModelArgs()

@@ -57,8 +57,8 @@ class DataLoaderWrapper:
 
         # Create data loaders
         self.loaders = {
-            'train': DataLoader(train_dataset, batch_size=self.model_args.BS, shuffle=True),
-            'test': DataLoader(test_dataset, batch_size=self.model_args.BS, shuffle=True),
+            'train': DataLoader(train_dataset, batch_size=self.model_args.batch_size, shuffle=True),
+            'test': DataLoader(test_dataset, batch_size=self.model_args.batch_size, shuffle=True),
         }
         # Other useful properties
         self.vocab_size = self.model_args.vocab_size
