@@ -18,6 +18,7 @@ import requests
 from tqdm import tqdm, trange
 
 import model
+import karpathy_model
 from fineweb import load_data
 
 # attempt to autodetect device
@@ -33,7 +34,8 @@ model_args: model.ModelArgs = model.ModelArgs()
 data = load_data(model_args)
 
 # Get model
-seanTransformer = model.Transformer(model_args)
+# seanTransformer = model.Transformer(model_args)
+seanTransformer = karpathy_model.GPT(karpathy_model.GPTConfig())
 seanTransformer.to(device)
 
 criterion = nn.CrossEntropyLoss()
