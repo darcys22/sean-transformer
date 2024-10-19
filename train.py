@@ -2,6 +2,7 @@ import math
 import random
 import os
 import wandb
+import logging
 
 import numpy as np
 np.set_printoptions(suppress=True)
@@ -21,13 +22,22 @@ import model
 import karpathy_model
 from fineweb import load_data
 
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+log_format = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
+formatter = logging.Formatter(fmt=log_format, datefmt="%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 # attempt to autodetect device
 device = "cpu"
 if torch.cuda.is_available():
     device = "cuda"
 elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
     device = "mps"
-print(f"using device: {device}")
+logger.info(f"using device: {device}")
 
 # Get default arguments
 model_args: model.ModelArgs = model.ModelArgs()
@@ -58,6 +68,8 @@ log_file = os.path.join(log_dir, f"log.txt")
 with open(log_file, "w") as f:  # open for writing to clear the file
     pass
 
+step = 0
+loss_accum = 0
 for epoch in range(num_epochs):
     epoch_losses = list()
     optim.zero_grad()  # Reset gradients at the beginning of each epoch
@@ -74,26 +86,36 @@ for epoch in range(num_epochs):
 
         # Scale loss by accumulation steps
         loss = loss / model_args.gradient_accumulation
+        loss_accum += loss.detach()
 
         # Backward pass (accumulate gradients)
         loss.backward()
 
         # Perform optimization step only after accumulating gradients for `model_args.gradient_accumulation` mini-batches
-        if (i + 1) % model_args.gradient_accumulation == 0:
-            optim.step()
-            optim.zero_grad()  # Reset gradients after each optimizer step
+        if (i + 1) % model_args.gradient_accumulation != 0:
+            continue
+
+        step = step + 1
+        optim.step()
+        optim.zero_grad()  # Reset gradients after each optimizer step
 
         # Track the loss for logging (multiply by accumulation steps to reflect the correct loss)
-        epoch_losses.append(loss.item() * model_args.gradient_accumulation)
+        epoch_losses.append(loss.item())
 
-        if (i + 1) % 50 == 0:
-            print('Loss: {:.4f}'.format(loss.item() * model_args.gradient_accumulation))
-            with open(log_file, "a") as f:
-                f.write(f"{epoch} {i} val {loss.item() * model_args.gradient_accumulation:.4f}\n")
-            wandb.log({"loss": loss.item() * model_args.gradient_accumulation})
+        norm = torch.nn.utils.clip_grad_norm_(seanTransformer.parameters(), 1.0)
+
+        logger.info('Step: {:05d} | Loss: {:.4f} | Norm: {:.4f} '.format(step, loss_accum.item(), norm))
+        wandb.log({"loss": loss_accum.item(), "norm": norm})
+        with open(log_file, "a") as f:
+            f.write(f"{epoch} {i} train {loss_accum.item()}\n")
+
+        loss_accum = 0
+
+        # Evaluate Validation loss
+        # if (i + 1) % 250 == 0:
 
     train_losses[epoch] = torch.tensor(epoch_losses).mean()
-    print(f'=> epoch: {epoch + 1}, loss: {train_losses[epoch]}')
+    logger.info(f'=> epoch: {epoch + 1}, loss: {train_losses[epoch]}')
 
     # Save model checkpoint
     checkpoint_path = os.path.join(log_dir, f"model_{epoch:05d}.pt")
