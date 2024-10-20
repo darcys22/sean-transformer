@@ -44,8 +44,8 @@ model_args: model.ModelArgs = model.ModelArgs()
 data = load_data(model_args)
 
 # Get model
-# seanTransformer = model.Transformer(model_args)
-seanTransformer = karpathy_model.GPT(karpathy_model.GPTConfig())
+seanTransformer = model.Transformer(model_args)
+# seanTransformer = karpathy_model.GPT(karpathy_model.GPTConfig())
 seanTransformer.to(device)
 
 criterion = nn.CrossEntropyLoss()
@@ -111,7 +111,7 @@ for epoch in range(num_epochs):
         loss_accum = 0
 
         # Evaluate Validation loss
-        if (step + 1) % 2 == 0:
+        if (step + 1) % 50 == 0:
             seanTransformer.eval()
             with torch.no_grad():
                 val_loss_steps = 20
