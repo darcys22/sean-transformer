@@ -105,14 +105,40 @@ for epoch in range(num_epochs):
         norm = torch.nn.utils.clip_grad_norm_(seanTransformer.parameters(), 1.0)
 
         logger.info('Step: {:05d} | Loss: {:.4f} | Norm: {:.4f} '.format(step, loss_accum.item(), norm))
-        wandb.log({"loss": loss_accum.item(), "norm": norm})
         with open(log_file, "a") as f:
             f.write(f"{epoch} {i} train {loss_accum.item()}\n")
-
+        cloud_log_object = {"loss": loss_accum.item(), "norm": norm}
         loss_accum = 0
 
         # Evaluate Validation loss
-        # if (i + 1) % 250 == 0:
+        if (step + 1) % 2 == 0:
+            seanTransformer.eval()
+            with torch.no_grad():
+                val_loss_steps = 20
+                val_loss = 0
+                for i, (X_val, Y_val) in enumerate(data.loaders['val']):
+                    if X_val.shape[0] != model_args.batch_size:
+                        continue
+                    X_val, Y_val = X_val.to(device), Y_val.to(device)
+
+                    # Forward pass
+                    out_val = seanTransformer(X_val)
+                    out_val = out_val.transpose(1, 2)
+                    loss_val = criterion(out_val, Y_val.long())
+                    val_loss += loss_val.item()
+                    if i >= val_loss_steps - 1:
+                        break
+
+
+                avg_val_loss = val_loss / val_loss_steps
+            logger.info('Validation Loss: {:.4f}'.format(avg_val_loss))
+            cloud_log_object["val_loss"] = avg_val_loss
+            with open(log_file, "a") as f:
+                f.write(f"{epoch} {i} valid {avg_val_loss}\n")
+
+                # Set model back to training mode
+            seanTransformer.train()
+        wandb.log(cloud_log_object)
 
     train_losses[epoch] = torch.tensor(epoch_losses).mean()
     logger.info(f'=> epoch: {epoch + 1}, loss: {train_losses[epoch]}')
