@@ -25,7 +25,7 @@ class MLP(nn.Module):
         self.dropout = nn.Dropout(0.1)
 
     def forward(self, x):
-        x = F.relu(self.i2h(x))
+        x = F.gelu(self.i2h(x))
         x = self.dropout(x)
         x = self.h2o(x)
         x = self.dropout(x)
