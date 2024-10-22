@@ -72,24 +72,23 @@ class MultiHeadAttention(nn.Module):
 class TransformerBlock(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
-        self.attention = MultiHeadAttention(args)
         self.ln1 = nn.LayerNorm(args.emb_size)
-        self.ffn = MLP(args.emb_size)
+        self.attention = MultiHeadAttention(args)
         self.ln2 = nn.LayerNorm(args.emb_size)
+        self.ffn = MLP(args.emb_size)
 
     def forward(self, x):
-        # Multi-Head Attention with residual connection and LayerNorm
-        attn_output = self.attention(x)
-        x = x + attn_output
-        x = self.ln1(x)
+        # Apply LayerNorm before Multi-Head Attention
+        x_norm = self.ln1(x)
+        attn_output = self.attention(x_norm)
+        x = x + attn_output  # Residual connection
 
-        # Feed-Forward Network with residual connection and LayerNorm
-        ffn_output = self.ffn(x)
-        x = x + ffn_output
-        x = self.ln2(x)
+        # Apply LayerNorm before Feed-Forward Network
+        x_norm = self.ln2(x)
+        ffn_output = self.ffn(x_norm)
+        x = x + ffn_output  # Residual connection
 
         return x
-
 
 class Transformer(nn.Module):
     def __init__(self, args: ModelArgs):
